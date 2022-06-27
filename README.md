@@ -2,6 +2,8 @@
 
 Code for the paper "Optimistic Linear Support and Successor Features as a Basis for Optimal Policy Transfer" at ICML 2022.
 
+Paper: https://arxiv.org/abs/2206.11326
+
 ## Install
 
 To install run:

@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-REQUIRED = ['numpy', 'torch', 'gym', 'cvxpy', 'wandb', 'pymoo', 'seaborn', 'pandas', 'tensorboard']
+REQUIRED = ['numpy', 'torch', 'gym==0.24.0', 'cvxpy', 'wandb', 'pymoo', 'seaborn', 'pandas', 'tensorboard']
 
 with open("README.md", "r") as fh:
     long_description = fh.read()

@@ -141,7 +141,7 @@ class SF(RLAlgorithm):
                 if s not in self.q_table:
                     self.q_table[s] = np.zeros((self.action_dim, self.phi_dim))
 
-                a, r, next_s, terminal = int(samp_a[i]), samp_r[i], tuple(samp_next_s[i]), samp_terminal[i]
+                a, r, next_s, terminal = int(samp_a[i][0]), samp_r[i], tuple(samp_next_s[i]), samp_terminal[i]
                 
                 if next_s not in self.q_table:
                     self.q_table[next_s] = np.zeros((self.action_dim, self.phi_dim))

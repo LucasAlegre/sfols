@@ -67,10 +67,12 @@ class OLS:
 
         removed_indx = self.remove_obsolete_values(value)
 
-        W_corner = self.new_corner_weights(value, W_del)
+        self.queue = []
 
         self.ccs.append(value)
         self.ccs_weights.append(w)
+       
+        W_corner = self.new_corner_weights(value)
 
         print("W_corner", W_corner)
         for wc in W_corner:
@@ -207,58 +209,61 @@ class OLS:
             self.worst_case_weight_repeated = True
 
         return w
+    
+    def corner_weights_new(self):
+        # Based on https://stackoverflow.com/questions/65343771/solve-linear-inequalities
+        A = np.vstack(self.ccs)
+        A = np.round_(A, decimals=4)
+        A = np.concatenate((A, -np.ones(A.shape[0]).reshape(-1,1)), axis=1)
 
-    def new_corner_weights(self, v_new: np.ndarray, W_del: List[np.ndarray]) -> List[np.ndarray]:
+        bla = np.ones(A.shape[1]).reshape(1,-1)
+        bla[0,-1] = 0
+        A = np.concatenate((A, bla), axis=0)
+        bla = -np.ones(A.shape[1]).reshape(1,-1)
+        bla[0,-1] = 0
+        A = np.concatenate((A, bla), axis=0)
+
+        for i in range(self.m):
+            bla = np.zeros(A.shape[1]).reshape(1,-1)
+            bla[0, i] = -1
+            A = np.concatenate((A, bla), axis=0)
+
+        b = np.zeros(len(self.ccs) + 2 + self.m)
+        b[len(self.ccs)] = 1
+        b[len(self.ccs) + 1] = -1
+
+        import cdd
+        def compute_poly_vertices(A, b):
+            b = b.reshape((b.shape[0], 1))
+            mat = cdd.Matrix(np.hstack([b, -A]), number_type='float')
+            mat.rep_type = cdd.RepType.INEQUALITY
+            P = cdd.Polyhedron(mat)
+            g = P.get_generators()
+            V = np.array(g)
+            vertices = []
+            for i in range(V.shape[0]):
+                if V[i, 0] != 1: continue
+                if i not in g.lin_set:
+                    vertices.append(V[i, 1:])
+            return vertices
+
+        vertices1 = compute_poly_vertices(A, b)
+        corner = []
+        for v in vertices1:
+            corner.append(v[:-1])
+        return corner
+
+    def new_corner_weights(self, v_new: np.ndarray) -> List[np.ndarray]:
         if len(self.ccs) == 0:
             return []
-        V_rel = []
-        W_new = []
-        for w in W_del:
-            best = [self.ccs[0]]
-            for v in self.ccs[1:]:
-                if np.allclose(np.dot(w, v), np.dot(w, best[0])):
-                    best.append(v)
-                elif np.dot(w, v) > np.dot(w, best[0]):
-                    best = [v]
-            V_rel += best
-            if len(best) < self.m:
-                wc = self.corner_weight(v_new, best)
-                W_new.append(wc)
-                W_new.extend(self.extrema_weights())
-
-        V_rel = np.unique(V_rel, axis=0)
-        # V_rel = self.ccs.copy()
-        for comb in range(1, self.m):
-            for x in combinations(V_rel, comb):
-                if not x:
-                    continue
-                wc = self.corner_weight(v_new, x)
-                W_new.append(wc)
+        
+        W_new = self.corner_weights_new()
 
         filter_fn = lambda wc: (wc is not None) and (not any([np.allclose(wc, w_old) for w_old in self.W] + [np.allclose(wc, w_old) for p, w_old in self.queue]))
         # (np.isclose(np.dot(wc, v_new), self.max_scalarized_value(wc))) and \
         W_new = list(filter(filter_fn, W_new))
         W_new = np.unique(W_new, axis=0)
         return W_new
-
-    def corner_weight(self, v_new: np.ndarray, v_set: List[np.ndarray]) -> np.ndarray:
-        wc = cp.Variable(self.m)
-        v_n = cp.Parameter(self.m)
-        v_n.value = v_new
-        objective = cp.Minimize(v_n @ wc)  # cp.Minimize(0)
-        constraints = [0 <= wc, cp.sum(wc) == 1]
-        for v in v_set:
-            v_par = cp.Parameter(self.m)
-            v_par.value = v
-            constraints.append(v_par @ wc == v_n @ wc)
-        prob = cp.Problem(objective, constraints)
-        prob.solve(verbose=False)  # (solver='SCS', verbose=False, eps=1e-5)
-        if prob.status == cp.OPTIMAL:
-            weight = np.clip(wc.value, 0, 1)  # ensure range [0,1]
-            weight /= weight.sum()  # ensure sum to one
-            return weight
-        else:
-            return None
 
     def extrema_weights(self) -> List[np.ndarray]:
         extrema_weights = []

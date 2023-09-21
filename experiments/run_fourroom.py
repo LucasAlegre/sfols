@@ -28,13 +28,13 @@ def run(algo):
                                 envelope=False,
                                 batch_size=5,
                                 buffer_size=1000000,
-                                project_name='FourRoom-Paper3',
+                                project_name='FourRoom-SFOLS',
                                 log=False)
     gpi_agent = GPI(env,
                     agent_constructor,
                     log=True,
-                    project_name='FourRoom-Paper3',
-                    experiment_name=algo+'new')
+                    project_name='FourRoom-SFOLS',
+                    experiment_name=algo)
 
     ols = OLS(m=3, epsilon=0.001, reverse_extremum=True)
     test_tasks = random_weights(dim=3, seed=42, n=30) + ols.extrema_weights()

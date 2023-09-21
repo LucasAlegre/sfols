@@ -67,10 +67,12 @@ class OLS:
 
         removed_indx = self.remove_obsolete_values(value)
 
-        W_corner = self.new_corner_weights(value)
+        self.queue = []
 
         self.ccs.append(value)
         self.ccs_weights.append(w)
+       
+        W_corner = self.new_corner_weights(value)
 
         print("W_corner", W_corner)
         for wc in W_corner:
